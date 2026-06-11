@@ -13,6 +13,8 @@
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{amssymb}
+\usepackage{setspace}
+\onehalfspacing
 
 % --- Tabelas Avançadas ---
 \usepackage{tabularx} % Necessário para o ambiente tabularx
@@ -142,7 +144,7 @@ respeitando a capacidade disponível:
 \]
 
 
-No entanto, o projeto proposto avança além do Problema da Mochila tradicional. Enquanto o modelo clássico possui apenas uma mochila, o sprint possui diversos desenvolvedores, cada um com sua própria capacidade. Assim, o problema se aproxima de uma extensão conhecida como \textbf{Problema da Mochila Múltipla} (Multiple Knapsack Problem - MKP) \cite{martello1990knapsack} \cite{arenales2015pesquisa}.
+No entanto, o projeto proposto avança além do Problema da Mochila tradicional. Enquanto o modelo clássico possui apenas uma mochila, o sprint possui diversos desenvolvedores, cada um com sua própria capacidade. Assim, o problema se aproxima de uma extensão conhecida como \textbf{Problema da Mochila Múltipla} (Multiple Knapsack Problem - MKP) \cite{martello1990knapsack, arenales2015pesquisa}.
 
 \begin{itemize}
     \item Cada desenvolvedor $i$ corresponde a uma mochila;
@@ -217,7 +219,41 @@ x_{ij} \in \{0,1\},
 
 A função objetivo (1) representa a maximização do valor total entregue pelo sprint, somando as prioridades $p_j$ de todas as tarefas $j$ alocadas a cada sprint $i$. As restrições (2) garantem que o esforço total das tarefas alocadas ao sprint $i$ não excede sua capacidade disponível $c_i$, seja em horas ou pontos. As restrições (3) asseguram que cada tarefa $j$ é alocada a no máximo um sprint, evitando duplicidade. As restrições (4) impõem que uma tarefa $j$ só pode ser alocada ao sprint $i$ se tal alocação for permitida pela matriz de elegibilidade $s_{ij}$, contemplando restrições de disponibilidade de equipe ou dependências externas. As restrições (5) modelam dependências de precedência entre tarefas: se a tarefa $j'$ depende da tarefa $j$ (isto é, $d_{jj'} = 1$), então $j'$ somente pode ser alocada a um sprint se $j$ também o for, garantindo que pré-requisitos sejam respeitados. Por fim, a restrição (6) define o domínio binário das variáveis de decisão $x_{ij}$, indicando se a tarefa $j$ é ou não incluída no sprint $i$.
 
+
+
 \section{Método de Solução}
+
+Para a resolução do modelo de Programação Inteira Binária (BIP) formulado, adotou-se o uso de métodos exatos de otimização combinatória. O ambiente computacional escolhido para a modelagem e execução matemática foi o \textit{Wolfram Mathematica} \cite{wolfram_mathematica_2026}. A escolha dessa ferramenta justifica-se pela sua capacidade de abstração algébrica, permitindo que as matrizes estruturais do problema sejam declaradas de forma direta e concisa.
+
+A implementação computacional foi dividida em duas etapas principais: a geração paramétrica do modelo e sua posterior otimização. A estrutura de resolução opera por meio das seguintes fases metodológicas:
+
+\begin{itemize}
+    \item \textbf{Instanciação das Variáveis e Função Objetivo:} O espaço de busca discreto é construído por meio do achatamento (\textit{flattening}) das matrizes de decisão, mapeando formalmente a matriz bidimensional de alocação em um vetor de variáveis binárias $x_{ij}$ \cite{10.1007/978-3-540-45099-3_19}. A função objetivo de maximização é gerada agregando linearmente os valores de prioridade associados às tarefas executadas.
+
+    \item \textbf{Geração Dinâmica do Espaço de Soluções Viáveis:} As cinco famílias de restrições do modelo (capacidade, unicidade, qualificação técnica, dependência e domínio binário) são geradas automaticamente pelo sistema. O método traduz a lógica matricial para um conjunto de inequações lineares. A restrição de precedência, por exemplo, é convertida em desigualdades estruturais da forma:
+    
+    \[
+    \sum_{i=1}^{m} x_{i,j'} \leq \sum_{i=1}^{m} x_{i,j},
+    \]
+    
+    sempre que a matriz de dependência indicar que a tarefa $j'$ depende da conclusão da tarefa $j$.
+
+    \item \textbf{Processamento por Algoritmo Exato:} Após a construção do sistema completo de equações e inequações, o modelo é submetido ao \textit{solver} de otimização inteira do \textit{Wolfram Mathematica}. Para resolver esse tipo de problema, o sistema emprega internamente algoritmos da família \textit{Branch and Bound} (Ramificar e Limitar), frequentemente complementados por técnicas de \textit{Branch and Cut} (Planos de Corte) \cite{bellenguez2007,wolsey1998}.
+\end{itemize}
+
+O algoritmo de \textit{Branch and Bound} inicia o processo relaxando as restrições de integralidade, permitindo que as variáveis assumam valores contínuos no intervalo $[0,1]$ \cite{arenales2015pesquisa}. A solução desse problema relaxado fornece um limite superior para a função objetivo. Em seguida, o algoritmo realiza sucessivas ramificações da árvore de busca, impondo restrições adicionais que forçam as variáveis a assumirem valores binários.
+
+Durante a exploração da árvore, cada subproblema gera novos limites para a função objetivo. Sempre que um ramo não possui potencial para produzir uma solução melhor do que a melhor solução inteira já encontrada, ele é descartado pelo processo de poda (\textit{bounding}). Quando utilizado em conjunto com técnicas de \textit{cutting planes}, o algoritmo também adiciona restrições válidas que eliminam soluções fracionárias sem excluir soluções inteiras viáveis, reduzindo significativamente o espaço de busca \cite{wolsey1998}.
+
+Ao final da execução, essa metodologia garante a convergência para a solução ótima global do problema, identificando a alocação de tarefas que maximiza o valor total obtido sob todas as restrições de capacidade \cite{kellerer2004}, qualificação \cite{bellenguez2007} e dependência \cite{samphaiboon2000}. Caso não exista nenhuma solução que satisfaça simultaneamente todas as restrições impostas, o modelo retorna a condição de infactibilidadee.
+
+
+
+
+\section{Experimentos computacionais}
+
+
+
 
 Para fundamentar as decisões do \textit{Product Owner} (PO) de forma analítica, aplicamos um modelo de Programação Inteira Binária (BIP) ao cenário prático denominado \textbf{PagaFácil}. O problema consiste na seleção e alocação de itens de um \textit{backlog} para uma \textit{sprint}, considerando restrições de capacidade, qualificação técnica e precedência entre tarefas \cite{wolsey1998}.
 
@@ -331,7 +367,6 @@ Este modelo, fundamentado no Problema da Mochila Múltipla \cite{kellerer2004}, 
 % Espaço preparado para o seu próximo cenário de escala maior:
 % \subsection{Cenário Prático 2: Cenário Ampliado (Escala Real)}
 
-\section{Experimentos computacionais}
 
 \section{Análise dos Resultados}
 
